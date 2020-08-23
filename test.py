@@ -221,6 +221,43 @@ def signal_vector_reconstruct(vae, noise_dimension, test_dataset, maxlen, recons
     print("reconstruction file at :{}.".format(reconstruction_file))
 
 
+def random_vector_reconstruction(vae, test_dataset, maxlen, reconstruction_file, word2index, index2word):
+    print("random vector reconstruction")
+    f = open(reconstruction_file, 'w')
+    for x_batch_test in test_dataset:
+        enc_embeddings = vae.embeddings(x_batch_test)
+        output = vae.encoder.rnn(enc_embeddings)
+        mask = tf.keras.backend.cast_to_floatx(tf.keras.backend.equal(x_batch_test, 1))
+        mask = tf.keras.backend.expand_dims(mask)
+        mask = tf.keras.backend.repeat_elements(mask, output.shape[2], axis=2)
+        output = tf.keras.backend.sum(output * mask, axis=1)
+        mean = vae.encoder.mean_layer(output)
+        z = tf.keras.backend.random_normal(shape=mean.shape)
+        input = tf.constant(word2index['<eos>'], shape=(x_batch_test.shape[0], 1), dtype=tf.int64)
+        state = None
+        output = input
+        for _ in range(maxlen):
+            dec_embeddings = vae.embeddings(input)
+            new_z = tf.keras.backend.repeat(z, dec_embeddings.shape[1])
+            dec_input = tf.keras.layers.concatenate([dec_embeddings, new_z], axis=-1)
+            out, h, c = vae.decoder.rnn(dec_input, initial_state=state)
+            pred = vae.decoder.vocab_prob(out)
+            pred = tf.keras.backend.argmax(pred, axis=-1)
+            input = pred
+            state = [h, c]
+            output = tf.keras.backend.concatenate([output, pred], axis=1)
+
+        output = output[:, 1:]
+        output = output.numpy().tolist()
+        for element in output:
+            if 1 in element:
+                element = element[:element.index(1)]
+            element = [index2word[i] for i in element]
+            f.write(' '.join(element) + '\n')
+    f.close()
+    print("reconstruction file at :{}.".format(reconstruction_file))
+
+
 def reconstruction(model_path):
     with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
         s = f.readlines()[1]
@@ -257,9 +294,11 @@ def reconstruction(model_path):
 
     mean_file = os.path.join(model_path, 'mean.txt')
     signal_file = os.path.join(model_path, 'signal.txt')
+    random_file = os.path.join(model_path, 'random.txt')
 
     mean_vector_reconstruct(vae, test_dataset, maxlen, mean_file, word2index, index2word)
     signal_vector_reconstruct(vae, noise_dimension, test_dataset, maxlen, signal_file, word2index, index2word)
+    random_vector_reconstruction(vae, test_dataset, maxlen, random_file, word2index, index2word)
 
 
 def loss_evaluation(model_path, seed=0):
@@ -732,71 +771,102 @@ def generate(model_path):
     print('generate {:d} unique sentences'.format(len(list(set(new_sentences)))))
 
 
-def random_reconstruction(model_path, seed=0):
-    tf.random.set_seed(seed)
+def unique(model_path):
+    count = 0
+    candidates = []
+    with open(os.path.join(model_path, 'mean.txt'), 'r') as f:
+        for sentence in f.readlines():
+            count = count + 1
+            if sentence not in candidates:
+                candidates.append(sentence)
+
+    with open(os.path.join(model_path, 'mean_unique.txt'), 'w') as f:
+        f.writelines(candidates)
+
+    print("Mean unique rate: {:.2f}".format(len(candidates) / count * 100))
+
+    count = 0
+    candidates = []
+    with open(os.path.join(model_path, 'signal.txt'), 'r') as f:
+        for sentence in f.readlines():
+            count = count + 1
+            if sentence not in candidates:
+                candidates.append(sentence)
+
+    with open(os.path.join(model_path, 'signal_unique.txt'), 'w') as f:
+        f.writelines(candidates)
+
+    print("Signal unique rate: {:.2f}".format(len(candidates) / count * 100))
+
+    count = 0
+    candidates = []
+    with open(os.path.join(model_path, 'random.txt'), 'r') as f:
+        for sentence in f.readlines():
+            count = count + 1
+            if sentence not in candidates:
+                candidates.append(sentence)
+
+    with open(os.path.join(model_path, 'random_unique.txt'), 'w') as f:
+        f.writelines(candidates)
+
+    print("Random unique rate: {:.2f}".format(len(candidates) / count * 100))
+
     with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
         s = f.readlines()[1]
         s = s.split(',')
 
-    emb_dim = int(s[0].split()[-1])
-    rnn_dim = int(s[1].split()[-1])
-    z_dim = int(s[2].split()[-1])
-    lr = float(s[5].split()[-1])
-    datapath = os.path.join(os.path.join(os.getcwd(), 'Dataset'), os.path.basename(s[-2].split()[-1]))
-    vocab_size = int(s[-1].split()[-1])
+    dpath = os.path.basename(s[-2].split()[-1])
+    if dpath == 'toy2':
+        datapath = os.path.join(os.path.join(os.getcwd(), 'Dataset'), dpath)
+        dic = {}
+        with open(os.path.join(datapath, 'root.txt'), 'r') as f:
+            for root in f.readlines():
+                pos = root[:root.find(':')]
+                temp = root[root.find(':') + 1:].split()
+                for word in temp:
+                    dic[word] = pos
 
-    word2index, index2word = load_dic(datapath)
-    vae = load_model(emb_dim, rnn_dim, z_dim, vocab_size, lr, model_path)
+        structures = []
+        with open(os.path.join(model_path, 'mean_unique.txt'), 'r') as f:
+            for sentence in f.readlines():
+                sentence = sentence.rstrip()
+                sentence = sentence.split()
+                for j in range(0, len(sentence)):
+                    sentence[j] = dic[sentence[j]]
+                structure = '+'.join(sentence)+'\n'
+                if structure not in structures:
+                    structures.append(structure)
 
-    maxlen = 0
-    sentences = []
-    with open(os.path.join(datapath, 'test.unk.txt'), 'r') as f:
-        for sentence in f.readlines():
-            sentence = sentence.rstrip() + ' <eos>'
-            sentence = sentence.split()
-            for i in range(len(sentence)):
-                sentence[i] = word2index[sentence[i]]
-            if len(sentence) > maxlen:
-                maxlen = len(sentence)
-            sentences.append(sentence)
+        with open(os.path.join(model_path, 'mean_structures.txt'), 'w') as f:
+            f.writelines(structures)
 
-    x_test = tf.keras.preprocessing.sequence.pad_sequences(sentences, maxlen=maxlen, padding='post', truncating='post')
-    test_dataset = tf.data.Dataset.from_tensor_slices(x_test).batch(512)
+        structures = []
+        with open(os.path.join(model_path, 'signal_unique.txt'), 'r') as f:
+            for sentence in f.readlines():
+                sentence = sentence.rstrip()
+                sentence = sentence.split()
+                for j in range(0, len(sentence)):
+                    sentence[j] = dic[sentence[j]]
+                structure = '+'.join(sentence) + '\n'
+                if structure not in structures:
+                    structures.append(structure)
 
-    print("random reconstruction")
-    f = open(os.path.join(model_path, 'random.txt'), 'w')
-    for x_batch_test in test_dataset:
-        enc_embeddings = vae.embeddings(x_batch_test)
-        output = vae.encoder.rnn(enc_embeddings)
-        mask = tf.keras.backend.cast_to_floatx(tf.keras.backend.equal(x_batch_test, 1))
-        mask = tf.keras.backend.expand_dims(mask)
-        mask = tf.keras.backend.repeat_elements(mask, output.shape[2], axis=2)
-        output = tf.keras.backend.sum(output * mask, axis=1)
-        mean = vae.encoder.mean_layer(output)
-        z = tf.keras.backend.random_normal(shape=mean.shape)
-        input = tf.constant(word2index['<eos>'], shape=(x_batch_test.shape[0], 1), dtype=tf.int64)
-        state = None
-        output = input
-        for _ in range(maxlen):
-            dec_embeddings = vae.embeddings(input)
-            new_z = tf.keras.backend.repeat(z, dec_embeddings.shape[1])
-            dec_input = tf.keras.layers.concatenate([dec_embeddings, new_z], axis=-1)
-            out, h, c = vae.decoder.rnn(dec_input, initial_state=state)
-            pred = vae.decoder.vocab_prob(out)
-            pred = tf.keras.backend.argmax(pred, axis=-1)
-            input = pred
-            state = [h, c]
-            output = tf.keras.backend.concatenate([output, pred], axis=1)
+        with open(os.path.join(model_path, 'signal_structures.txt'), 'w') as f:
+            f.writelines(structures)
 
-        output = output[:, 1:]
-        output = output.numpy().tolist()
-        for element in output:
-            if 1 in element:
-                element = element[:element.index(1)]
-            element = [index2word[i] for i in element]
-            f.write(' '.join(element) + '\n')
-    f.close()
-    print("reconstruction file at :{}.".format(os.path.join(model_path, 'random.txt')))
+        structures = []
+        with open(os.path.join(model_path, 'random_unique.txt'), 'r') as f:
+            for sentence in f.readlines():
+                sentence = sentence.rstrip()
+                sentence = sentence.split()
+                for j in range(0, len(sentence)):
+                    sentence[j] = dic[sentence[j]]
+                structure = '+'.join(sentence) + '\n'
+                if structure not in structures:
+                    structures.append(structure)
+
+        with open(os.path.join(model_path, 'random_structures.txt'), 'w') as f:
+            f.writelines(structures)
 
 
 if __name__ == '__main__':
@@ -809,7 +879,7 @@ if __name__ == '__main__':
               '4 will do homotopy evaluation, ' \
               '5 will sample sentences from test set and construct sentence chains, ' \
               '6 will use sentence chains to generate sentences, ' \
-              '7 will replace latent code with random code to reconstruct files.'
+              '7 will filter unique sentences from reconstruct files.'
     parser.add_argument('-tm', '--test_mode', default=0, type=int, help=tm_help)
     parser.add_argument('-s', '--seed', default=0, type=int, help='random seed')
     parser.add_argument('-m', '--mpath', default='CBT/CBT_Z_64_C_15_0', help='path of model')
@@ -849,6 +919,6 @@ if __name__ == '__main__':
     elif mode == 6:
         generate(model_path)
     elif mode == 7:
-        random_reconstruction(model_path, seed=seed)
+        unique(model_path)
     else:
         print("wrong mode, please type test.py -h for help")
