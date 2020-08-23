@@ -517,6 +517,28 @@ def dimension_homotopy(model_path, seed=0):
     z2 = tf.keras.backend.random_normal(shape=(1, z_dim))
     signal1 = z1 * (1 - noise_dimension)
     signal2 = z2 * (1 - noise_dimension)
+    print('normal homotopy:')
+    for i in range(0, 6):
+        print(i + 1, end='. ')
+        z = (1 - 0.2 * i) * z1 + 0.2 * i * z2
+        input = tf.constant(word2index['<eos>'], shape=(1, 1))
+        state = None
+        output = []
+        for _ in range(0, maxlen):
+            dec_embeddings = vae.embeddings(input)
+            new_z = tf.keras.backend.repeat(z, dec_embeddings.shape[1])
+            dec_input = tf.keras.layers.concatenate([dec_embeddings, new_z], axis=-1)
+            out, h, c = vae.decoder.rnn(dec_input, initial_state=state)
+            pred = vae.decoder.vocab_prob(out)
+            pred = tf.keras.backend.argmax(pred, axis=-1)
+            input = pred
+            state = [h, c]
+            output.append(index2word[int(pred)])
+            if output[-1] == '<eos>':
+                break
+        for j in range(0, len(output) - 2):
+            print(output[j], end=' ')
+        print(output[-2], end='\n')
 
     print('from sentence:')
     z = signal1
@@ -710,6 +732,73 @@ def generate(model_path):
     print('generate {:d} unique sentences'.format(len(list(set(new_sentences)))))
 
 
+def random_reconstruction(model_path, seed=0):
+    tf.random.set_seed(seed)
+    with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
+        s = f.readlines()[1]
+        s = s.split(',')
+
+    emb_dim = int(s[0].split()[-1])
+    rnn_dim = int(s[1].split()[-1])
+    z_dim = int(s[2].split()[-1])
+    lr = float(s[5].split()[-1])
+    datapath = os.path.join(os.path.join(os.getcwd(), 'Dataset'), os.path.basename(s[-2].split()[-1]))
+    vocab_size = int(s[-1].split()[-1])
+
+    word2index, index2word = load_dic(datapath)
+    vae = load_model(emb_dim, rnn_dim, z_dim, vocab_size, lr, model_path)
+
+    maxlen = 0
+    sentences = []
+    with open(os.path.join(datapath, 'test.unk.txt'), 'r') as f:
+        for sentence in f.readlines():
+            sentence = sentence.rstrip() + ' <eos>'
+            sentence = sentence.split()
+            for i in range(len(sentence)):
+                sentence[i] = word2index[sentence[i]]
+            if len(sentence) > maxlen:
+                maxlen = len(sentence)
+            sentences.append(sentence)
+
+    x_test = tf.keras.preprocessing.sequence.pad_sequences(sentences, maxlen=maxlen, padding='post', truncating='post')
+    test_dataset = tf.data.Dataset.from_tensor_slices(x_test).batch(512)
+
+    print("random reconstruction")
+    f = open(os.path.join(model_path, 'random.txt'), 'w')
+    for x_batch_test in test_dataset:
+        enc_embeddings = vae.embeddings(x_batch_test)
+        output = vae.encoder.rnn(enc_embeddings)
+        mask = tf.keras.backend.cast_to_floatx(tf.keras.backend.equal(x_batch_test, 1))
+        mask = tf.keras.backend.expand_dims(mask)
+        mask = tf.keras.backend.repeat_elements(mask, output.shape[2], axis=2)
+        output = tf.keras.backend.sum(output * mask, axis=1)
+        mean = vae.encoder.mean_layer(output)
+        z = tf.keras.backend.random_normal(shape=mean.shape)
+        input = tf.constant(word2index['<eos>'], shape=(x_batch_test.shape[0], 1), dtype=tf.int64)
+        state = None
+        output = input
+        for _ in range(maxlen):
+            dec_embeddings = vae.embeddings(input)
+            new_z = tf.keras.backend.repeat(z, dec_embeddings.shape[1])
+            dec_input = tf.keras.layers.concatenate([dec_embeddings, new_z], axis=-1)
+            out, h, c = vae.decoder.rnn(dec_input, initial_state=state)
+            pred = vae.decoder.vocab_prob(out)
+            pred = tf.keras.backend.argmax(pred, axis=-1)
+            input = pred
+            state = [h, c]
+            output = tf.keras.backend.concatenate([output, pred], axis=1)
+
+        output = output[:, 1:]
+        output = output.numpy().tolist()
+        for element in output:
+            if 1 in element:
+                element = element[:element.index(1)]
+            element = [index2word[i] for i in element]
+            f.write(' '.join(element) + '\n')
+    f.close()
+    print("reconstruction file at :{}.".format(os.path.join(model_path, 'random.txt')))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='model evaluation')
     tm_help = 'test mode: ' \
@@ -719,7 +808,8 @@ if __name__ == '__main__':
               '3 will sample individual sentences from test set and reconstruct sentences, ' \
               '4 will do homotopy evaluation, ' \
               '5 will sample sentences from test set and construct sentence chains, ' \
-              '6 will use sentence chains to generate sentences.'
+              '6 will use sentence chains to generate sentences, ' \
+              '7 will replace latent code with random code to reconstruct files.'
     parser.add_argument('-tm', '--test_mode', default=0, type=int, help=tm_help)
     parser.add_argument('-s', '--seed', default=0, type=int, help='random seed')
     parser.add_argument('-m', '--mpath', default='CBT/CBT_Z_64_C_15_0', help='path of model')
@@ -758,5 +848,7 @@ if __name__ == '__main__':
         sample_sentence_chain(model_path, seed=seed)
     elif mode == 6:
         generate(model_path)
+    elif mode == 7:
+        random_reconstruction(model_path, seed=seed)
     else:
         print("wrong mode, please type test.py -h for help")
