@@ -772,44 +772,23 @@ def generate(model_path):
 
 
 def unique(model_path):
-    count = 0
-    candidates = []
     with open(os.path.join(model_path, 'mean.txt'), 'r') as f:
-        for sentence in f.readlines():
-            count = count + 1
-            if sentence not in candidates:
-                candidates.append(sentence)
+        candidates = list(set(f.readlines()))
 
     with open(os.path.join(model_path, 'mean_unique.txt'), 'w') as f:
         f.writelines(candidates)
 
-    print("Mean unique rate: {:.2f}".format(len(candidates) / count * 100))
-
-    count = 0
-    candidates = []
     with open(os.path.join(model_path, 'signal.txt'), 'r') as f:
-        for sentence in f.readlines():
-            count = count + 1
-            if sentence not in candidates:
-                candidates.append(sentence)
+        candidates = list(set(f.readlines()))
 
     with open(os.path.join(model_path, 'signal_unique.txt'), 'w') as f:
         f.writelines(candidates)
 
-    print("Signal unique rate: {:.2f}".format(len(candidates) / count * 100))
-
-    count = 0
-    candidates = []
     with open(os.path.join(model_path, 'random.txt'), 'r') as f:
-        for sentence in f.readlines():
-            count = count + 1
-            if sentence not in candidates:
-                candidates.append(sentence)
+        candidates = list(set(f.readlines()))
 
     with open(os.path.join(model_path, 'random_unique.txt'), 'w') as f:
         f.writelines(candidates)
-
-    print("Random unique rate: {:.2f}".format(len(candidates) / count * 100))
 
     with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
         s = f.readlines()[1]
