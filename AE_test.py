@@ -125,17 +125,24 @@ def homotopy_evaluation(model_path, seed=0):
     word2index, index2word = load_dic(datapath)
     ae = load_model(emb_dim, rnn_dim, z_dim, vocab_size, lr, model_path)
 
+    maxlen = 0
+    with open(os.path.join(datapath, 'test.unk.txt'), 'r') as f:
+        for sentence in f.readlines():
+            sentence = sentence.rstrip() + ' <eos>'
+            sentence = sentence.split()
+            if len(sentence) > maxlen:
+                maxlen = len(sentence)
+
     z1 = tf.keras.backend.random_normal(shape=(1, z_dim))
     z2 = tf.keras.backend.random_normal(shape=(1, z_dim))
-
-    print("latent space homotopy")
-    for i in range(0, 11):
+    print('normal homotopy:')
+    for i in range(0, 6):
         print(i + 1, end='. ')
-        z = (1-0.1*i)*z1 + 0.1*i*z2
+        z = (1 - 0.2 * i) * z1 + 0.2 * i * z2
         input = tf.constant(word2index['<eos>'], shape=(1, 1))
         state = None
         output = []
-        while True:
+        for _ in range(0, maxlen):
             dec_embeddings = ae.embeddings(input)
             new_z = tf.keras.backend.repeat(z, dec_embeddings.shape[1])
             dec_input = tf.keras.layers.concatenate([dec_embeddings, new_z], axis=-1)
