@@ -303,13 +303,13 @@ def toy2_disentangling(model_path, seed=0):
     plt.xlabel('dimension')
     plt.ylabel('Mean Value')
     plt.legend()
-    plt.savefig(os.path.join(model_path, 'disentangling.png'))
+    plt.savefig(os.path.join(model_path, 'disentangling_'+str(seed)+'.png'))
     plt.clf()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='evaluations for toy datasets.')
-    parser.add_argument('-tm', '--test_mode', default=1, type=int, help='test mode:')
+    parser.add_argument('-tm', '--test_mode', default=0, type=int, help='test mode:')
     parser.add_argument('-s', '--seed', default=0, type=int, help='random seed')
     parser.add_argument('-m', '--mpath', default='toy2/toy2_Z_16_C_4_0', help='path of model')
 
