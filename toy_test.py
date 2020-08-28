@@ -309,7 +309,10 @@ def toy2_disentangling(model_path, seed=0):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='evaluations for toy datasets.')
-    parser.add_argument('-tm', '--test_mode', default=0, type=int, help='test mode:')
+    tm_help = 'test mode: ' \
+              '0 will analysis reconstruction files, ' \
+              '1 will do disentangling for VAEs of toy dataset 2.'
+    parser.add_argument('-tm', '--test_mode', default=0, type=int, help=tm_help)
     parser.add_argument('-s', '--seed', default=0, type=int, help='random seed')
     parser.add_argument('-m', '--mpath', default='toy2/toy2_Z_16_C_4_0', help='path of model')
 
