@@ -25,14 +25,16 @@ def cal_mean_std(model_path):
                 temp.append(float(df['Rec.'][index[i]]))
                 temp.append(float(df['KL'][index[i]]))
                 if dpath == 'toy1':
-                    temp.append(float(df['WPMS'][index[i]]))
-                    temp.append(float(df['Correct'][index[i]]))
-                    temp.append(float(df['Unique'][index[i]]))
+                    items = ['WPMS', 'Unique', 'Rule', 'R-WPMS', 'R-Unique', 'R-Rule', 'W-Unique', 'WR-Unique']
+                    for item in items:
+                        temp.append(float(df[item][index[i]]))
                 elif dpath == 'toy2':
-                    temp.append(float(df['Match'][index[i]]))
-                    temp.append(float(df['Valid'][index[i]]))
-                    temp.append(float(df['Valid_structure'][index[i]]))
-                    temp.append(float(df['Invalid_structure'][index[i]]))
+                    temp.append(float(df['SD'][index[i]]))
+                    items = ['Match', 'In-Structure', 'Not-In-Structure', 'n.', 'v.', 'adv.', 'adj.', 'prep.', 'conj1.', 'conj2.', 'end-punc.']
+                    for item in items:
+                        b = str(df[item][index[i]]).split('/')
+                        for j in [0, 2]:
+                            temp.append(float(b[j]))
                 else:
                     temp.append(float(df['SD'][index[i]]))
                     temp.append(float(df['AU'][index[i]]))
@@ -51,8 +53,52 @@ def cal_mean_std(model_path):
             index.pop(rm[i])
             i = i - 1
         data = np.array(data)
-        print(np.mean(data, axis=0))
-        print(np.std(data, axis=0))
+        mean = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
+        for i in range(0, mean.shape[0]):
+            print('mean: {:.2f}, std:{:.2f}'.format(mean[i], std[i]))
+
+
+def toy2_pos_plot(model_path):
+    dpath = os.path.basename(model_path)
+    file_path = os.path.join(model_path, dpath + '.csv')
+    df = pd.read_csv(file_path)
+
+    marker_plot = ['.', 'o', 's', '*', '+', 'x']
+    color_plot = ['b', 'g', 'r', 'c', 'm', 'y']
+    c = 0
+    index = list(range(0, len(df['model'])))
+    items = ['n.', 'v.', 'adv.', 'adj.', 'prep.', 'conj1.', 'conj2.', 'end-punc.']
+    while index:
+        model = df['model'][index[0]].split(',')
+        data = []
+        i = 0
+        rm = []
+        while i < len(index):
+            temp = []
+            if df['model'][index[i]].split(',')[0:2] == model[0:2]:
+                rm.append(i)
+                for item in items:
+                    b = str(df[item][index[i]]).split('/')
+                    temp.append(float(b[0]))
+                data.append(temp)
+            i = i + 1
+
+        i = len(rm) - 1
+        while i >= 0:
+            index.pop(rm[i])
+            i = i - 1
+        data = np.array(data)
+        mean = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
+        plt.fill_between(items, mean - std, mean + std, alpha=0.2, color=color_plot[c])
+        plt.plot(items, mean, marker_plot[c] + color_plot[c] + '-',
+                 label='VAE(C={:d},dim={:d})'.format(int(model[0].split('=')[-1]), int(model[1].split('=')[-1])))
+        c = c + 1
+
+    plt.legend()
+    plt.savefig(os.path.join(model_path, 'toy2_pos.png'))
+    plt.clf()
 
 
 def individual_position_hit_rate(model_path):
@@ -90,7 +136,7 @@ def individual_position_hit_rate(model_path):
         if temp_dir.split('_')[1] != 'Z':
             dirs.pop(0)
         else:
-            if dpath != 'toy1' and dpath != 'toy2' and dpath != 'toy2':
+            if dpath != 'toy1' and dpath != 'toy2':
                 dirs.pop(dirs.index('_'.join(temp_dir.split('_')[0:3]) + '_AE'))
                 ae_path = os.path.join(model_path, '_'.join(temp_dir.split('_')[0:3]) + '_AE')
 
@@ -171,7 +217,7 @@ def individual_position_hit_rate(model_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='model evaluation')
     parser.add_argument('-tm', '--test_mode', default=0, type=int, help='test mode:')
-    parser.add_argument('-m', '--mpath', default='CBT', help='path of model')
+    parser.add_argument('-m', '--mpath', default='toy2', help='path of model')
 
     args = parser.parse_args()
 
@@ -180,6 +226,8 @@ if __name__ == '__main__':
 
     if mode == 0:
         cal_mean_std(model_path)
+        if os.path.basename(model_path) == 'toy2':
+            toy2_pos_plot(model_path)
     elif mode == 1:
         individual_position_hit_rate(model_path)
     else:
