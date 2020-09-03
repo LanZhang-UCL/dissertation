@@ -377,7 +377,7 @@ def drop1_reconstruction(vae, noise_dimension, mean_vector, word2index, index2wo
         if signal_dimension[i] == 1:
             sd.append(i)
     for dim in sd:
-        print("drop {:d} dimension".format(dim + 1))
+        print("drop {:d} dimension, {:.3f}".format(dim + 1, mean_vector[0, dim]))
         drop1 = [1 for _ in range(0, noise_dimension.shape[0])]
         drop1[dim] = 0
         drop1 = tf.constant(drop1, shape=(1, noise_dimension.shape[0]), dtype=mean_vector.dtype)
@@ -628,10 +628,11 @@ def dimension_homotopy(model_path, seed=0):
             sd.append(i)
     for dim in sd:
         print('dim {:d} homotopy'.format(dim+1))
+        print('from {:.3f} to {:.3f}'.format(signal1.numpy()[0, dim], signal2.numpy()[0, dim]))
         for i in range(0, 5):
             print(i + 1, end='. ')
             z = signal1.numpy()
-            z[0][dim] = (1 - 0.25 * i) * signal1.numpy()[0][dim] + 0.25 * i * signal2.numpy()[0][dim]
+            z[0, dim] = (1 - 0.25 * i) * signal1.numpy()[0, dim] + 0.25 * i * signal2.numpy()[0, dim]
             z = tf.constant(z)
             input = tf.constant(word2index['<eos>'], shape=(1, 1))
             state = None
@@ -729,48 +730,6 @@ def sample_sentence_chain(model_path, seed=0):
         print()
 
 
-def generate(model_path):
-    with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
-        s = f.readlines()[1]
-        s = s.split(',')
-
-    emb_dim = int(s[0].split()[-1])
-    rnn_dim = int(s[1].split()[-1])
-    z_dim = int(s[2].split()[-1])
-    lr = float(s[5].split()[-1])
-    datapath = os.path.join(os.path.join(os.getcwd(), 'Dataset'), os.path.basename(s[-2].split()[-1]))
-    vocab_size = int(s[-1].split()[-1])
-
-    word2index, index2word = load_dic(datapath)
-    vae = load_model(emb_dim, rnn_dim, z_dim, vocab_size, lr, model_path)
-
-    sentences = []
-    maxlen = 0
-    with open(os.path.join(datapath, 'test.unk.txt'), 'r') as f:
-        for sentence in f.readlines():
-            sentences.append(sentence)
-            sentence = sentence.rstrip() + ' <eos>'
-            sentence = sentence.split()
-            if len(sentence) > maxlen:
-                maxlen = len(sentence)
-
-    f = open(os.path.join(model_path, 'generate.txt'), 'w')
-    for i in range(0, len(sentences)):
-        chain = sentence_chain(vae, sentences[i], word2index, index2word, maxlen)
-        for sentence in chain:
-            f.write(sentence + '\n')
-    f.close()
-
-    new_sentences = []
-    with open(os.path.join(model_path, 'generate.txt'), 'r') as f:
-        for sentence in f.readlines():
-            if sentence not in sentences:
-                new_sentences.append(sentence)
-    print('{:d} orginal sentences'.format(len(sentences)))
-    print('generate {:d} new sentences'.format(len(new_sentences)))
-    print('generate {:d} unique sentences'.format(len(list(set(new_sentences)))))
-
-
 def unique(model_path):
     with open(os.path.join(model_path, 'mean.txt'), 'r') as f:
         candidates = list(set(f.readlines()))
@@ -857,8 +816,7 @@ if __name__ == '__main__':
               '3 will sample individual sentences from test set and reconstruct sentences, ' \
               '4 will do homotopy evaluation, ' \
               '5 will sample sentences from test set and construct sentence chains, ' \
-              '6 will use sentence chains to generate sentences, ' \
-              '7 will filter unique sentences from reconstruct files.'
+              '6 will filter unique sentences from reconstruct files.'
     parser.add_argument('-tm', '--test_mode', default=0, type=int, help=tm_help)
     parser.add_argument('-s', '--seed', default=0, type=int, help='random seed')
     parser.add_argument('-m', '--mpath', default='CBT/CBT_Z_64_C_15_0', help='path of model')
@@ -896,8 +854,6 @@ if __name__ == '__main__':
     elif mode == 5:
         sample_sentence_chain(model_path, seed=seed)
     elif mode == 6:
-        generate(model_path)
-    elif mode == 7:
         unique(model_path)
     else:
         print("wrong mode, please type test.py -h for help")
