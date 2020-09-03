@@ -846,6 +846,9 @@ if __name__ == '__main__':
         print('signal reconstruction file bleu scores (reference original file)')
         candidate_path = os.path.join(model_path, 'signal.txt')
         bleu(candidate_path, reference_path)
+        print('random reconstruction file bleu scores (reference original file)')
+        candidate_path = os.path.join(model_path, 'random.txt')
+        bleu(candidate_path, reference_path)
     elif mode == 3:
         sample_sentence(model_path, seed=seed)
     elif mode == 4:
