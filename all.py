@@ -25,7 +25,7 @@ def cal_mean_std(model_path):
                 temp.append(float(df['Rec.'][index[i]]))
                 temp.append(float(df['KL'][index[i]]))
                 if dpath == 'toy1':
-                    items = ['WPMS', 'Unique', 'Rule', 'R-WPMS', 'R-Unique', 'R-Rule', 'W-Unique', 'WR-Unique']
+                    items = ['WPMS', 'Unique', 'Rule', 'R-WPMS', 'R-Unique', 'R-Rule', 'W-Unique', 'WR-Unique', 'BLEU-2']
                     for item in items:
                         temp.append(float(df[item][index[i]]))
                 elif dpath == 'toy2':
@@ -136,7 +136,7 @@ def individual_position_hit_rate(model_path):
         if temp_dir.split('_')[1] != 'Z':
             dirs.pop(0)
         else:
-            if dpath != 'toy1' and dpath != 'toy2':
+            if dpath != 'toy1':
                 dirs.pop(dirs.index('_'.join(temp_dir.split('_')[0:3]) + '_AE'))
                 ae_path = os.path.join(model_path, '_'.join(temp_dir.split('_')[0:3]) + '_AE')
 
