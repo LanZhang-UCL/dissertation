@@ -172,6 +172,7 @@ def sentence_analysis(datapath):
             for i in range(0, len(sentence)):
                 count[voc.index(sentence[i])] += 1
 
+    total = sum(count)
     with open(os.path.join(datapath, 'root.txt'), 'r') as f:
         for root in f.readlines():
             pos = root[:root.find(':')]
@@ -180,6 +181,7 @@ def sentence_analysis(datapath):
             for i in range(0, len(temp)):
                 temp[i] = count[voc.index(temp[i])]
                 sum_temp += temp[i]
+            print('{}: {:.2f}%'.format(pos, sum_temp / total * 100), end=' ')
             for i in range(0, len(temp)):
                 temp[i] = temp[i] / sum_temp
             bottom = 0
@@ -193,6 +195,7 @@ def sentence_analysis(datapath):
 
     plt.savefig(os.path.join(datapath, 'train.png'))
     plt.clf()
+    print()
 
     count = [0 for _ in range(0, len(voc))]
     with open(os.path.join(datapath, 'valid.unk.txt'), 'r') as f:
@@ -202,6 +205,7 @@ def sentence_analysis(datapath):
             for i in range(0, len(sentence)):
                 count[voc.index(sentence[i])] += 1
 
+    total = sum(count)
     with open(os.path.join(datapath, 'root.txt'), 'r') as f:
         for root in f.readlines():
             pos = root[:root.find(':')]
@@ -212,6 +216,7 @@ def sentence_analysis(datapath):
                 sum_temp += temp[i]
             for i in range(0, len(temp)):
                 temp[i] = temp[i] / sum_temp
+            print('{}: {:.2f}%'.format(pos, sum_temp / total * 100), end=' ')
             bottom = 0
             for i in range(0, len(temp)):
                 plt.bar(pos, temp[i], bottom=bottom, label=pos)
@@ -223,6 +228,7 @@ def sentence_analysis(datapath):
 
     plt.savefig(os.path.join(datapath, 'valid.png'))
     plt.clf()
+    print()
 
     count = [0 for _ in range(0, len(voc))]
     with open(os.path.join(datapath, 'test.unk.txt'), 'r') as f:
@@ -232,6 +238,7 @@ def sentence_analysis(datapath):
             for i in range(0, len(sentence)):
                 count[voc.index(sentence[i])] += 1
 
+    total = sum(count)
     with open(os.path.join(datapath, 'root.txt'), 'r') as f:
         for root in f.readlines():
             pos = root[:root.find(':')]
@@ -240,6 +247,7 @@ def sentence_analysis(datapath):
             for i in range(0, len(temp)):
                 temp[i] = count[voc.index(temp[i])]
                 sum_temp += temp[i]
+            print('{}: {:.2f}%'.format(pos, sum_temp / total * 100), end=' ')
             for i in range(0, len(temp)):
                 temp[i] = temp[i] / sum_temp
             bottom = 0
@@ -253,6 +261,7 @@ def sentence_analysis(datapath):
 
     plt.savefig(os.path.join(datapath, 'test.png'))
     plt.clf()
+    print()
 
 
 if __name__ == '__main__':
