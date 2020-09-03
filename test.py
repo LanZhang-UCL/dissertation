@@ -301,8 +301,7 @@ def reconstruction(model_path):
     random_vector_reconstruction(vae, test_dataset, maxlen, random_file, word2index, index2word)
 
 
-def loss_evaluation(model_path, seed=0):
-    tf.random.set_seed(seed)
+def loss_evaluation(model_path):
     with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
         s = f.readlines()[1]
         s = s.split(',')
@@ -552,8 +551,8 @@ def dimension_homotopy(model_path, seed=0):
             if len(sentence) > maxlen:
                 maxlen = len(sentence)
 
-    z1 = tf.keras.backend.random_normal(shape=(1, z_dim))
-    z2 = tf.keras.backend.random_normal(shape=(1, z_dim))
+    z1 = tf.random.normal(shape=(1, z_dim))
+    z2 = tf.random.normal(shape=(1, z_dim))
     signal1 = z1 * (1 - noise_dimension)
     signal2 = z2 * (1 - noise_dimension)
     print('normal homotopy:')
