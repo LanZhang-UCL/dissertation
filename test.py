@@ -648,9 +648,9 @@ def dimension_homotopy(model_path, seed=0):
                 output.append(index2word[int(pred)])
                 if output[-1] == '<eos>':
                     break
-            for j in range(0, len(output) - 2):
+            for j in range(0, len(output) - 1):
                 print(output[j], end=' ')
-            print(output[-2], end='\n')
+            print('({:.3f})'.format(z[0, dim]), end='\n')
         signal1 = z
 
 
