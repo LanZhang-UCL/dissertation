@@ -25,7 +25,8 @@ def cal_mean_std(model_path):
                 temp.append(float(df['Rec.'][index[i]]))
                 temp.append(float(df['KL'][index[i]]))
                 if dpath == 'toy1':
-                    items = ['WPMS', 'Unique', 'Rule', 'R-WPMS', 'R-Unique', 'R-Rule', 'W-Unique', 'WR-Unique', 'BLEU-2']
+                    items = ['WPMS', 'Unique', 'Rule', 'R-WPMS', 'R-Unique', 'R-Rule', 'W-Unique', 'WR-Unique', 'BLEU-2',
+                             'R-BLEU-2']
                     for item in items:
                         temp.append(float(df[item][index[i]]))
                 elif dpath == 'toy2':
@@ -217,7 +218,7 @@ def individual_position_hit_rate(model_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='model evaluation')
     parser.add_argument('-tm', '--test_mode', default=0, type=int, help='test mode:')
-    parser.add_argument('-m', '--mpath', default='toy2', help='path of model')
+    parser.add_argument('-m', '--mpath', default='toy1', help='path of model')
 
     args = parser.parse_args()
 
