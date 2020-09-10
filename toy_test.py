@@ -7,7 +7,7 @@ from Dataset.toy2.toy2 import generate_sentences
 from test import load_dic, load_model
 
 
-def word_position_match_score(candidate_path, reference_path):
+def overall_position_hit_rate(candidate_path, reference_path):
     references = []
     with open(reference_path, 'r') as f:
         for sentence in f.readlines():
@@ -25,7 +25,7 @@ def word_position_match_score(candidate_path, reference_path):
         s_score = sum([int(reference[i] == candidate[i]) for i in range(min(len(reference), len(candidate)))])
         score = score + s_score / len(reference)
 
-    print("word position match score {}".format(score/len(references)*100))
+    print("Overall position hit rate {}".format(score/len(references)*100))
 
 
 def toy1_unique_and_rule(candidate_path, n, voc):
@@ -49,35 +49,6 @@ def toy1_unique_and_rule(candidate_path, n, voc):
         print('There are {:.2f}% sentences satisfying rule in file.'.format(correct_count / len(candidates) * 100))
 
 
-def weighted_unique(candidate_path, reference_path):
-    index = []
-    candidates = []
-    with open(candidate_path, 'r') as f:
-        sentences = f.readlines()
-        for i in range(0, len(sentences)):
-            if sentences[i] not in candidates:
-                index.append(i)
-                candidates.append(sentences[i])
-
-    references = []
-    with open(reference_path, 'r') as f:
-        sentences = f.readlines()
-        n = len(sentences)
-        for i in index:
-            references.append(sentences[i])
-
-    for i in range(0, len(index)):
-        references[i] = references[i].rstrip().split()
-        candidates[i] = candidates[i].rstrip().split()
-
-    score = 0
-    for reference, candidate in zip(references, candidates):
-        s_score = sum([int(reference[i] == candidate[i]) for i in range(min(len(reference), len(candidate)))])
-        score = score + s_score / len(reference)
-
-    print("Weighted unique rate {:.2f}%".format(score / n * 100))
-
-
 def toy1_analysis(model_path):
     with open(os.path.join(model_path, 'epoch_loss.txt'), 'r') as f:
         s = f.readlines()[1]
@@ -91,8 +62,8 @@ def toy1_analysis(model_path):
     mean_unique_path = os.path.join(model_path, 'mean_unique.txt')
     random_unique_path = os.path.join(model_path, 'random_unique.txt')
 
-    word_position_match_score(mean_path, reference_path)
-    word_position_match_score(random_path, reference_path)
+    overall_position_hit_rate(mean_path, reference_path)
+    overall_position_hit_rate(random_path, reference_path)
 
     voc = []
     with open(os.path.join(datapath, 'vocab.txt'), 'r') as f:
@@ -105,9 +76,6 @@ def toy1_analysis(model_path):
 
     toy1_unique_and_rule(mean_unique_path, n, voc)
     toy1_unique_and_rule(random_unique_path, n, voc)
-
-    weighted_unique(mean_path, reference_path)
-    weighted_unique(random_path, reference_path)
 
 
 def toy2_sentence_analysis(candidate_path, reference_path, root_path):
