@@ -17,5 +17,6 @@ all.py is used to determine some figures for several Variational Autoencoders at
 This project uses Tensorflow 2.1.
 
 ## Dataset folder
-Datasets used in this project are available at: 
+Datasets used in this project are available at: https://drive.google.com/file/d/108P6kZVGjLVzVA1JwgUOYeYoTYIo-z2p/view?usp=sharing
+
 All datasets should be placed into the Dataset folder.
